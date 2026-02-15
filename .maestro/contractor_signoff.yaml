@@ -1,0 +1,34 @@
+appId: com.blakemedlock.ComplianceApp
+---
+- runFlow:
+    file: subflow_login.yaml
+    env:
+      USER_EMAIL: "contractor@test.co.uk"
+      USER_PASS: "password"
+
+- tapOn: { id: "btn-sign-off-0" }
+
+- extendedWaitUntil:
+    visible: { id: "sign-off-modal" }
+    timeout: 10000
+
+- tapOn: { id: "input-resolution-notes" }
+- inputText: "Completed emergency light testing. Replaced 2 faulty batteries."
+
+- tapOn: { id: "input-remedial-actions" }
+- inputText: "Re-certified Block B for another 6 months."
+
+- tapOn: { id: "input-digital-signature" }
+- inputText: "B. Medlock"
+
+- tapOn: { id: "switch-next-service" }
+
+- tapOn: "OK"
+
+- tapOn: { id: "btn-seal-record" }
+
+- extendedWaitUntil:
+    visible: "Regulatory record sealed."
+    timeout: 20000
+
+- tapOn: "OK"

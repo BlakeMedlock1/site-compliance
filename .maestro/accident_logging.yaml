@@ -1,0 +1,28 @@
+appId: com.blakemedlock.ComplianceApp
+---
+- runFlow:
+    file: subflow_login.yaml
+    env:
+      USER_EMAIL: "employee@test.co.uk"
+      USER_PASS: "password"
+
+- tapOn: { id: "menu-item-LogAccident" }
+
+- tapOn: { id: "input-injured-name" }
+- inputText: "John Doe"
+
+- tapOn: { id: "input-accident-location" }
+- inputText: "Loading Bay A"
+- tapOn: { point: "50%, 15%" }
+
+- tapOn: { id: "input-injury-description" }
+- inputText: "Slipped on oily surface."
+- tapOn: { point: "50%, 15%" }
+
+- tapOn: { id: "switch-riddor" }
+
+- tapOn:
+    point: "50%, 90%"
+
+- assertVisible: "Entry Sealed"
+- tapOn: "OK"

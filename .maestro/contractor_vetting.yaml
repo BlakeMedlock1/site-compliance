@@ -1,0 +1,24 @@
+appId: com.blakemedlock.ComplianceApp
+---
+- launchApp: { clearState: true }
+
+- runFlow:
+    file: subflow_login.yaml
+    env:
+      USER_EMAIL: "manager@test.co.uk"
+      USER_PASS: "password"
+
+- tapOn: "Specialist Verification"
+- assertVisible: "Specialist Verification"
+
+- tapOn: "Dave Sparks"
+- assertVisible: "CONTRACTOR DOSSIER"
+
+- assertVisible: { id: "btn-view-contractor-cert" }
+- tapOn: { id: "btn-approve-contractor" }
+
+- assertVisible: "Status changed to Approved"
+- tapOn: "OK"
+- assertVisible:
+    id: "contractor-status-text"
+    text: "Current Status: Approved"
