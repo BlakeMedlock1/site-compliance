@@ -256,7 +256,36 @@ export const IncidentDetail = ({ route, navigation }: any) => {
               {incident.remedial_actions || "No further actions required."}
             </Text>
 
-            <View style={styles.divider} />
+            {incident.resolved_image_url && (
+      <View style={{ marginTop: SPACING.m }}>
+        <Text style={styles.subLabel}>RESOLUTION EVIDENCE</Text>
+        <TouchableOpacity
+          onPress={() => {
+            const { data } = supabase.storage
+              .from("incident-evidence")
+              .getPublicUrl(incident.resolved_image_url);
+            if (data?.publicUrl) Linking.openURL(data.publicUrl);
+          }}
+          style={styles.imageContainer}
+          accessibilityRole="imagebutton"
+          accessibilityLabel="Resolution evidence. Tap to expand."
+        >
+          <Image
+            source={{ 
+              uri: supabase.storage.from("incident-evidence").getPublicUrl(incident.resolved_image_url).data.publicUrl 
+            }}
+            style={styles.evidenceImage}
+            resizeMode="cover"
+          />
+          <View style={[styles.expandOverlay, { backgroundColor: 'rgba(46, 125, 50, 0.8)' }]}>
+            <Ionicons name="checkmark-done-circle" size={18} color={COLORS.white} />
+            <Text style={styles.expandText}>VERIFIED RESOLUTION</Text>
+          </View>
+        </TouchableOpacity>
+      </View>
+    )}
+  <View style={styles.divider} />
+  
             <Text
               style={styles.auditMeta}
               accessibilityLabel={`Signed off by ${incident.signed_off_by || contractor?.name || "Assigned Specialist"}`}
