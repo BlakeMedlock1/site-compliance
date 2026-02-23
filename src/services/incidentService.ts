@@ -97,4 +97,23 @@ export const incidentService = {
 
     return { success: true, data, offline: false };
   },
+  getDashboardData: async () => {
+    const [feedRes, countRes] = await Promise.all([
+      supabase
+        .from("incidents")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(8),
+      supabase
+        .from("incidents")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "Pending"),
+    ]);
+
+    if (feedRes.error) throw feedRes.error;
+    return {
+      feed: feedRes.data as Incident[],
+      count: countRes.count || 0,
+    };
+  },
 };

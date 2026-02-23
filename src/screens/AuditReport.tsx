@@ -1,89 +1,29 @@
-import React, { useState, useEffect } from "react";
-import {
-  View,
-  StyleSheet,
-  Alert,
-  SafeAreaView,
-  TouchableOpacity,
-  Text,
-  ActivityIndicator,
-} from "react-native";
-import { auditService } from "../services/auditService";
-import { accidentService } from "../services/accidentService";
-import { COLORS, SHADOWS, TYPOGRAPHY, SPACING, TOUCH_TARGETS } from "../theme";
-
+import React, { useState } from "react";
+import { View, StyleSheet, SafeAreaView, TouchableOpacity, Text, ActivityIndicator } from "react-native";
+import { useAudit } from "../hooks/useAudit";
+import { COLORS, SHADOWS, SPACING, TOUCH_TARGETS } from "../theme";
 import { AuditFilters } from "../components/audit/AuditFilters";
 import { AuditCharts } from "../components/audit/AuditCharts";
 import { AuditList } from "../components/audit/AuditList";
 import { AuditDetailModal } from "../components/audit/AuditDetailModal";
 
-export const AuditReport = () => {
-  const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState<
-    "Analytics" | "Incidents" | "Assets" | "Accidents"
-  >("Analytics");
-  const [incidents, setIncidents] = useState<any[]>([]);
-  const [assets, setAssets] = useState<any[]>([]);
-  const [accidents, setAccidents] = useState<any[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
+export const AuditReport = ({ navigation }: any) => {
+  const {
+    loading,
+    viewMode,
+    setViewMode,
+    searchQuery,
+    setSearchQuery,
+    fromDate,
+    toDate,
+    setFromDate,
+    setToDate,
+    filtered,
+    charts,
+    handleExport
+  } = useAudit();
+
   const [selectedItem, setSelectedItem] = useState<any>(null);
-
-  const [fromDate, setFromDate] = useState(
-    new Date(new Date().setMonth(new Date().getMonth() - 1)),
-  );
-  const [toDate, setToDate] = useState(new Date());
-
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      const data = await auditService.getAuditData();
-      const accData = await accidentService.getAccidents();
-      setIncidents(data.incidents || []);
-      setAssets(data.assets || []);
-      setAccidents(accData || []);
-    } catch (e: any) {
-      Alert.alert("Sync Error", e.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const filteredIncidents = incidents.filter((item) => {
-    const itemDate = new Date(item.created_at);
-    return (
-      itemDate >= fromDate &&
-      itemDate <= toDate &&
-      (item.description || "").toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  });
-
-  const filteredAccidents = accidents.filter((item) => {
-    const itemDate = new Date(item.date_time);
-    return (
-      itemDate >= fromDate &&
-      itemDate <= toDate &&
-      (item.injured_person_name || "")
-        .toLowerCase()
-        .includes(searchQuery.toLowerCase())
-    );
-  });
-
-  const filteredAssets = assets.filter(
-    (item) =>
-      (item.asset_name || "")
-        .toLowerCase()
-        .includes(searchQuery.toLowerCase()) ||
-      (item.location || "").toLowerCase().includes(searchQuery.toLowerCase()),
-  );
-
-  const incidentChartData = auditService.getMonthlyTrend(filteredIncidents);
-  const accidentChartData = auditService.getMonthlyTrend(
-    filteredAccidents.map((a) => ({ ...a, created_at: a.date_time })),
-  );
 
   return (
     <SafeAreaView style={styles.container}>
@@ -99,24 +39,28 @@ export const AuditReport = () => {
 
       {loading ? (
         <View style={styles.loaderContainer}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
+          <ActivityIndicator 
+            size="large" 
+            color={COLORS.primary} 
+            accessibilityLabel="Loading audit data"
+          />
         </View>
       ) : (
         <View style={styles.content}>
           {viewMode === "Analytics" ? (
             <AuditCharts
-              incidentData={incidentChartData}
-              accidentData={accidentChartData}
+              incidentData={charts.incidents}
+              accidentData={charts.accidents}
             />
           ) : (
             <AuditList
               viewMode={viewMode}
               data={
                 viewMode === "Assets"
-                  ? filteredAssets
+                  ? filtered.assets
                   : viewMode === "Accidents"
-                    ? filteredAccidents
-                    : filteredIncidents
+                    ? filtered.accidents
+                    : filtered.incidents
               }
               searchQuery={searchQuery}
               onSearchChange={setSearchQuery}
@@ -130,22 +74,10 @@ export const AuditReport = () => {
         <TouchableOpacity
           testID="btn-export-audit-pdf"
           style={styles.exportBtn}
-          onPress={() => {
-            const dataToExport =
-              viewMode === "Assets"
-                ? filteredAssets
-                : viewMode === "Accidents"
-                  ? filteredAccidents
-                  : filteredIncidents;
-
-            auditService.generateAuditPDF(
-              `${viewMode} Report`,
-              dataToExport,
-              viewMode === "Assets",
-            );
-          }}
+          onPress={handleExport}
           accessibilityRole="button"
           accessibilityLabel={`Generate ${viewMode} PDF report`}
+          accessibilityHint={`Creates a shareable PDF document of the current ${viewMode} list`}
         >
           <Text style={styles.exportTxt}>
             GENERATE {viewMode.toUpperCase()} PDF
@@ -158,6 +90,7 @@ export const AuditReport = () => {
         item={selectedItem}
         onClose={() => setSelectedItem(null)}
         viewMode={viewMode}
+        navigation={navigation}
       />
     </SafeAreaView>
   );

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import {
   View,
   Text,
@@ -8,70 +8,17 @@ import {
   ActivityIndicator,
   SafeAreaView,
   SectionList,
-  Alert,
 } from "react-native";
-import { contractorService, Contractor } from "../services/contractorService";
+import { useContractorVerification } from "../hooks/useContractorVerification";
 import { COLORS, TYPOGRAPHY, SHADOWS, SPACING, TOUCH_TARGETS } from "../theme";
 
 export const ContractorVerification = ({ navigation }: any) => {
-  const [allContractors, setAllContractors] = useState<Contractor[]>([]);
-  const [filteredSections, setFilteredSections] = useState<any[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [loading, setLoading] = useState(true);
-
-  const loadContractors = async () => {
-    try {
-      setLoading(true);
-      const data = await contractorService.getAllContractors();
-      setAllContractors(data);
-      formatSections(data, searchQuery);
-    } catch (e: any) {
-      Alert.alert("Sync Error", "Failed to load workforce data: " + e.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const formatSections = (data: Contractor[], query: string) => {
-    const q = query.toLowerCase();
-    const filtered = data.filter(
-      (c) =>
-        c.name?.toLowerCase().includes(q) ||
-        c.specialism?.toLowerCase().includes(q) ||
-        c.company?.toLowerCase().includes(q),
-    );
-
-    const sections = [
-      {
-        title: "Awaiting Verification",
-        data: filtered.filter(
-          (c) => c.competence_status === "Pending" && c.competence_evidence_url,
-        ),
-      },
-      {
-        title: "Approved Specialists",
-        data: filtered.filter((c) => c.competence_status === "Approved"),
-      },
-      {
-        title: "Suspended / Others",
-        data: filtered.filter(
-          (c) =>
-            c.competence_status !== "Approved" &&
-            c.competence_status !== "Pending",
-        ),
-      },
-    ];
-    setFilteredSections(sections.filter((s) => s.data.length > 0));
-  };
-
-  useEffect(() => {
-    const unsubscribe = navigation.addListener("focus", loadContractors);
-    return unsubscribe;
-  }, [navigation]);
-
-  useEffect(() => {
-    formatSections(allContractors, searchQuery);
-  }, [searchQuery, allContractors]);
+  const {
+    filteredSections,
+    searchQuery,
+    setSearchQuery,
+    loading,
+  } = useContractorVerification(navigation);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -148,10 +95,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 2,
     borderBottomColor: COLORS.lightGray,
   },
-  mainTitle: {
-    ...TYPOGRAPHY.header,
-    color: COLORS.primary,
-  },
+  mainTitle: { ...TYPOGRAPHY.header, color: COLORS.primary },
   searchBar: {
     backgroundColor: COLORS.background,
     minHeight: TOUCH_TARGETS.min,
@@ -163,11 +107,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.lightGray,
   },
-  loaderContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
+  loaderContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
   sectionHeader: {
     ...TYPOGRAPHY.caption,
     fontWeight: "900",
@@ -177,10 +117,7 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     letterSpacing: 1,
   },
-  listContent: {
-    paddingHorizontal: SPACING.l,
-    paddingBottom: SPACING.xl,
-  },
+  listContent: { paddingHorizontal: SPACING.l, paddingBottom: SPACING.xl },
   card: {
     backgroundColor: COLORS.white,
     minHeight: 80,
@@ -194,29 +131,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.lightGray,
   },
-  infoBox: {
-    flex: 1,
-  },
-  name: {
-    ...TYPOGRAPHY.subheader,
-    color: COLORS.primary,
-  },
-  sub: {
-    ...TYPOGRAPHY.body,
-    fontSize: 13,
-    color: COLORS.textLight,
-    marginTop: 2,
-  },
-  chevron: {
-    color: COLORS.primary,
-    fontSize: 20,
-    fontWeight: "900",
-    marginLeft: SPACING.s,
-  },
-  emptyText: {
-    textAlign: "center",
-    ...TYPOGRAPHY.body,
-    marginTop: 60,
-    color: COLORS.textLight,
-  },
+  infoBox: { flex: 1 },
+  name: { ...TYPOGRAPHY.subheader, color: COLORS.primary },
+  sub: { ...TYPOGRAPHY.body, fontSize: 13, color: COLORS.textLight, marginTop: 2 },
+  chevron: { color: COLORS.primary, fontSize: 20, fontWeight: "900", marginLeft: SPACING.s },
+  emptyText: { textAlign: "center", ...TYPOGRAPHY.body, marginTop: 60, color: COLORS.textLight },
 });

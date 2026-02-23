@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import {
   View,
   Text,
@@ -9,93 +9,31 @@ import {
   SafeAreaView,
   ActivityIndicator,
   Linking,
-  Alert,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
+import { useIncidentDetail } from "../hooks/useIncidentDetail";
 import { COLORS, SPACING, TYPOGRAPHY, SHADOWS, TOUCH_TARGETS } from "../theme";
 
 export const IncidentDetail = ({ route, navigation }: any) => {
   const { user } = useAuth();
   const { incident } = route.params;
-  const [contractor, setContractor] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const [evidenceUri, setEvidenceUri] = useState<string | null>(null);
-  const [loadingImg, setLoadingImg] = useState(true);
-  const [imgError, setImgError] = useState(false);
 
-  useEffect(() => {
-    if (user?.role !== "Manager") {
-      Alert.alert(
-        "Security Block",
-        "Only Site Managers may access statutory evidence dossiers.",
-      );
-      navigation.goBack();
-      return;
-    }
-
-    const fetchData = async () => {
-      try {
-        if (incident.assigned_contractor_id) {
-          const { data } = await supabase
-            .from("profiles")
-            .select("*")
-            .eq("id", incident.assigned_contractor_id)
-            .single();
-          setContractor(data);
-        }
-
-        const rawPath = incident.image_url || incident.evidence_url;
-        if (rawPath && !rawPath.startsWith("file://")) {
-          if (rawPath.startsWith("http")) {
-            setEvidenceUri(rawPath);
-          } else {
-            const { data } = supabase.storage
-              .from("incident-evidence")
-              .getPublicUrl(rawPath);
-
-            if (data?.publicUrl) {
-              setEvidenceUri(`${data.publicUrl}?t=${new Date().getTime()}`);
-            }
-          }
-        } else {
-          setImgError(true);
-        }
-      } catch (e) {
-        setImgError(true);
-      } finally {
-        setLoading(false);
-        setLoadingImg(false);
-      }
-    };
-
-    fetchData();
-  }, [incident, user]);
+  const { 
+    contractor, 
+    loading, 
+    evidenceUri, 
+    imgError, 
+    openEvidence 
+  } = useIncidentDetail(incident, user, navigation);
 
   const isResolved = incident.status === "Resolved";
   const isPdf = evidenceUri?.toLowerCase().includes(".pdf");
 
-  const handleAssignment = () => {
-    navigation.navigate("ContractorAssignment", { incidentId: incident.id });
-  };
-
-  const openEvidence = () => {
-    if (evidenceUri) {
-      Linking.openURL(evidenceUri).catch(() => {
-        Alert.alert("Error", "Unable to open evidence file.");
-      });
-    }
-  };
-
   const formatDate = (dateString: string) => {
     if (!dateString) return "PENDING";
     return new Date(dateString).toLocaleString("en-GB", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
+      day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit",
     });
   };
 
@@ -105,63 +43,34 @@ export const IncidentDetail = ({ route, navigation }: any) => {
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.statusHeader}>
-          <View
-            style={[
-              styles.badge,
-              { backgroundColor: isResolved ? COLORS.success : COLORS.warning },
-            ]}
-          >
-            <Text style={styles.badgeText}>
-              {incident.status.toUpperCase()}
-            </Text>
+          <View style={[styles.badge, { backgroundColor: isResolved ? COLORS.success : COLORS.warning }]}>
+            <Text style={styles.badgeText}>{incident.status.toUpperCase()}</Text>
           </View>
-          <Text
-            style={styles.timestamp}
-            accessibilityLabel={`Reference ID ${incident.id.slice(0, 8)}`}
-          >
-            REF: {incident.id.slice(0, 8)}
-          </Text>
+          <Text style={styles.timestamp}>REF: {incident.id.slice(0, 8)}</Text>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.label} accessibilityRole="header">
-            STATUTORY AUDIT TIMELINE
-          </Text>
+          <Text style={styles.label} accessibilityRole="header">STATUTORY AUDIT TIMELINE</Text>
           <View style={styles.timelineItem}>
-            <Ionicons
-              name="radio-button-on"
-              size={18}
-              color={COLORS.secondary}
-            />
+            <Ionicons name="radio-button-on" size={18} color={COLORS.secondary} />
             <View style={styles.timeInfo}>
               <Text style={styles.timeLabel}>LOGGED BY STAFF</Text>
-              <Text style={styles.timeValue}>
-                {formatDate(incident.created_at)}
-              </Text>
+              <Text style={styles.timeValue}>{formatDate(incident.created_at)}</Text>
             </View>
           </View>
-
           {isResolved && (
             <View style={[styles.timelineItem, { marginTop: SPACING.m }]}>
-              <Ionicons
-                name="checkmark-circle"
-                size={18}
-                color={COLORS.success}
-              />
+              <Ionicons name="checkmark-circle" size={18} color={COLORS.success} />
               <View style={styles.timeInfo}>
                 <Text style={styles.timeLabel}>RESOLVED & SIGNED OFF</Text>
-                <Text style={styles.timeValue}>
-                  {formatDate(incident.resolved_at)}
-                </Text>
+                <Text style={styles.timeValue}>{formatDate(incident.resolved_at)}</Text>
               </View>
             </View>
           )}
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.label} accessibilityRole="header">
-            HAZARD DESCRIPTION
-          </Text>
+          <Text style={styles.label} accessibilityRole="header">HAZARD DESCRIPTION</Text>
           <Text style={styles.value}>{incident.description}</Text>
           <View style={styles.locationRow}>
             <Ionicons name="location" size={18} color={COLORS.textLight} />
@@ -170,151 +79,42 @@ export const IncidentDetail = ({ route, navigation }: any) => {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.label} accessibilityRole="header">
-            DIGITAL EVIDENCE
-          </Text>
-          {loadingImg ? (
-            <View style={styles.loaderBox}>
-              <ActivityIndicator color={COLORS.primary} size="large" />
-            </View>
+          <Text style={styles.label} accessibilityRole="header">DIGITAL EVIDENCE</Text>
+          {loading ? (
+            <ActivityIndicator color={COLORS.primary} size="large" />
           ) : evidenceUri && !imgError ? (
-            <View>
-              {isPdf ? (
-                <TouchableOpacity
-                  style={styles.pdfCard}
-                  onPress={openEvidence}
-                  accessibilityRole="link"
-                  accessibilityLabel="View Statutory PDF evidence"
-                >
-                  <Ionicons
-                    name="document-text"
-                    size={40}
-                    color={COLORS.secondary}
-                  />
-                  <View style={styles.pdfContent}>
-                    <Text style={styles.pdfText}>View Statutory PDF</Text>
-                    <Text style={styles.pdfSub}>Touch to Open Document</Text>
-                  </View>
-                  <Ionicons
-                    name="open-outline"
-                    size={24}
-                    color={COLORS.textLight}
-                  />
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity
-                  onPress={openEvidence}
-                  style={styles.imageContainer}
-                  accessibilityRole="imagebutton"
-                  accessibilityLabel="Hazard photo evidence. Tap to expand."
-                >
-                  <Image
-                    source={{ uri: evidenceUri }}
-                    style={styles.evidenceImage}
-                    resizeMode="cover"
-                    onError={() => setImgError(true)}
-                  />
-                  <View style={styles.expandOverlay}>
-                    <Ionicons name="expand" size={18} color={COLORS.white} />
-                    <Text style={styles.expandText}>Tap to Verify</Text>
-                  </View>
-                </TouchableOpacity>
-              )}
-            </View>
+            isPdf ? (
+              <TouchableOpacity style={styles.pdfCard} onPress={openEvidence} accessibilityRole="link">
+                <Ionicons name="document-text" size={40} color={COLORS.secondary} />
+                <View style={styles.pdfContent}>
+                  <Text style={styles.pdfText}>View Statutory PDF</Text>
+                  <Text style={styles.pdfSub}>Touch to Open Document</Text>
+                </View>
+                <Ionicons name="open-outline" size={24} color={COLORS.textLight} />
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity onPress={openEvidence} style={styles.imageContainer} accessibilityRole="imagebutton">
+                <Image source={{ uri: evidenceUri }} style={styles.evidenceImage} resizeMode="cover" />
+                <View style={styles.expandOverlay}>
+                  <Ionicons name="expand" size={18} color={COLORS.white} />
+                  <Text style={styles.expandText}>Tap to Verify</Text>
+                </View>
+              </TouchableOpacity>
+            )
           ) : (
-            <View
-              style={styles.noEvidence}
-              accessibilityLabel="No valid cloud evidence found"
-            >
-              <Ionicons
-                name="cloud-offline-outline"
-                size={32}
-                color={COLORS.gray}
-              />
-              <Text style={styles.noEvidenceText}>
-                No valid cloud evidence found.
-              </Text>
-            </View>
+            <View style={styles.noEvidence}><Text>No valid evidence found.</Text></View>
           )}
         </View>
 
-        {isResolved ? (
+        {!isResolved && (
           <View style={styles.section}>
-            <Text style={styles.label} accessibilityRole="header">
-              CONTRACTOR COMPLETION REPORT
-            </Text>
-
-            <Text style={styles.subLabel}>RESOLUTION NOTES</Text>
-            <Text style={styles.notesText}>
-              {incident.resolution_notes || "No notes provided."}
-            </Text>
-
-            <Text style={[styles.subLabel, { marginTop: SPACING.m }]}>
-              REMEDIAL ACTIONS TAKEN
-            </Text>
-            <Text style={styles.notesText}>
-              {incident.remedial_actions || "No further actions required."}
-            </Text>
-
-            {incident.resolved_image_url && (
-      <View style={{ marginTop: SPACING.m }}>
-        <Text style={styles.subLabel}>RESOLUTION EVIDENCE</Text>
-        <TouchableOpacity
-          onPress={() => {
-            const { data } = supabase.storage
-              .from("incident-evidence")
-              .getPublicUrl(incident.resolved_image_url);
-            if (data?.publicUrl) Linking.openURL(data.publicUrl);
-          }}
-          style={styles.imageContainer}
-          accessibilityRole="imagebutton"
-          accessibilityLabel="Resolution evidence. Tap to expand."
-        >
-          <Image
-            source={{ 
-              uri: supabase.storage.from("incident-evidence").getPublicUrl(incident.resolved_image_url).data.publicUrl 
-            }}
-            style={styles.evidenceImage}
-            resizeMode="cover"
-          />
-          <View style={[styles.expandOverlay, { backgroundColor: 'rgba(46, 125, 50, 0.8)' }]}>
-            <Ionicons name="checkmark-done-circle" size={18} color={COLORS.white} />
-            <Text style={styles.expandText}>VERIFIED RESOLUTION</Text>
-          </View>
-        </TouchableOpacity>
-      </View>
-    )}
-  <View style={styles.divider} />
-  
-            <Text
-              style={styles.auditMeta}
-              accessibilityLabel={`Signed off by ${incident.signed_off_by || contractor?.name || "Assigned Specialist"}`}
-            >
-              Signed by:{" "}
-              {incident.signed_off_by ||
-                contractor?.name ||
-                "Assigned Specialist"}
-            </Text>
-          </View>
-        ) : (
-          <View style={styles.section}>
-            <Text style={styles.label} accessibilityRole="header">
-              MANAGEMENT CONTROLS
-            </Text>
-            <TouchableOpacity
-              style={styles.assignBtn}
-              onPress={handleAssignment}
-              accessibilityRole="button"
-              accessibilityLabel={
-                contractor
-                  ? `Reassign specialist currently ${contractor.name}`
-                  : "Assign specialist to this hazard"
-              }
+            <Text style={styles.label} accessibilityRole="header">MANAGEMENT CONTROLS</Text>
+            <TouchableOpacity 
+              style={styles.assignBtn} 
+              onPress={() => navigation.navigate("ContractorAssignment", { incidentId: incident.id })}
             >
               <Text style={styles.assignBtnText}>
-                {contractor
-                  ? `REASSIGN (${contractor.name})`
-                  : "ASSIGN SPECIALIST"}
+                {contractor ? `REASSIGN (${contractor.name})` : "ASSIGN SPECIALIST"}
               </Text>
             </TouchableOpacity>
           </View>

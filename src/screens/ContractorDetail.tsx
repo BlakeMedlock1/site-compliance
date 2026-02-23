@@ -1,35 +1,26 @@
-import React, { useState } from "react";
+import React from "react";
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  ScrollView,
   Alert,
-  Linking,
-  SafeAreaView,
   ActivityIndicator,
+  SafeAreaView,
+  Linking,
+  ScrollView,
 } from "react-native";
-import { contractorService } from "../services/contractorService";
+import { useContractorVerify } from "../hooks/useContractorVerify";
 import { COLORS, TYPOGRAPHY, SPACING, TOUCH_TARGETS, SHADOWS } from "../theme";
 
-export const ContractorDetail = ({ route, navigation }: any) => {
+export const ContractorDetail = ({ route }: any) => {
   const { contractor } = route.params;
-  const [status, setStatus] = useState(contractor.competence_status);
-  const [loading, setLoading] = useState(false);
-
-  const handleUpdateStatus = async (newStatus: string) => {
-    try {
-      setLoading(true);
-      await contractorService.updateContractorStatus(contractor.id, newStatus);
-      setStatus(newStatus);
-      Alert.alert("Success", `Status changed to ${newStatus}`);
-    } catch (e: any) {
-      Alert.alert("Error", e.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+  
+  const { 
+    status, 
+    loading, 
+    handleUpdateStatus 
+  } = useContractorVerify(contractor);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -57,8 +48,7 @@ export const ContractorDetail = ({ route, navigation }: any) => {
             style={[
               styles.statusInfo,
               {
-                color:
-                  status === "Approved" ? COLORS.success : COLORS.secondary,
+                color: status === "Approved" ? COLORS.success : COLORS.secondary,
               },
             ]}
             accessibilityLabel={`Current competence status is ${status}`}

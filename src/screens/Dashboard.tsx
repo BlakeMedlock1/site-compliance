@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -8,9 +8,10 @@ import {
   StyleSheet,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { supabase } from "../lib/supabase";
 import { COLORS, TYPOGRAPHY, SPACING, TOUCH_TARGETS, SHADOWS } from "../theme";
 import { useAuth } from "../context/AuthContext";
+import { useDashboard } from "../hooks/useDashboard";
+import { AuditDetailModal } from "../components/audit/AuditDetailModal";
 
 interface Props {
   navigation: any;
@@ -18,9 +19,8 @@ interface Props {
 
 export const Dashboard = ({ navigation }: Props) => {
   const { user } = useAuth();
-  const [feed, setFeed] = useState<any[]>([]);
-  const [pendingCount, setPendingCount] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const { feed, pendingCount, loading } = useDashboard();
+  const [selectedIncident, setSelectedIncident] = useState<any>(null);
 
   const menuItems = [
     {
@@ -55,62 +55,6 @@ export const Dashboard = ({ navigation }: Props) => {
     },
   ];
 
-  const fetchData = async () => {
-    try {
-      const [feedRes, countRes] = await Promise.all([
-        supabase
-          .from("incidents")
-          .select("*")
-          .order("created_at", { ascending: false })
-          .limit(8),
-        supabase
-          .from("incidents")
-          .select("*", { count: "exact", head: true })
-          .eq("status", "Pending"),
-      ]);
-      setFeed(feedRes.data || []);
-      setPendingCount(countRes.count || 0);
-    } catch (error) {
-      console.warn("Dashboard sync failed - showing cached data if available");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchData();
-
-    const channel = supabase
-      .channel("realtime_incidents")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "incidents" },
-        (payload) => {
-          if (payload.eventType === "INSERT") {
-            setFeed((prev) => [payload.new, ...prev].slice(0, 8));
-            if (payload.new.status === "Pending") setPendingCount((c) => c + 1);
-          } else if (payload.eventType === "UPDATE") {
-            setFeed((prev) =>
-              prev.map((item) =>
-                item.id === payload.new.id ? payload.new : item,
-              ),
-            );
-            fetchData();
-          } else if (payload.eventType === "DELETE") {
-            setFeed((prev) =>
-              prev.filter((item) => item.id !== payload.old.id),
-            );
-            fetchData();
-          }
-        },
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
-
   return (
     <ScrollView contentContainerStyle={styles.content}>
       <View style={styles.hero} accessibilityRole="summary">
@@ -127,7 +71,6 @@ export const Dashboard = ({ navigation }: Props) => {
           onPress={() => navigation.navigate("AuditReport")}
           accessibilityRole="button"
           accessibilityLabel={`Action Required: ${pendingCount} pending tasks`}
-          accessibilityHint="Navigates to the audit report to resolve pending items"
         >
           <Ionicons name="notifications" size={24} color={COLORS.white} />
           <Text style={styles.summaryText}>
@@ -178,7 +121,6 @@ export const Dashboard = ({ navigation }: Props) => {
             color={COLORS.primary}
             size="large"
             style={{ marginTop: 20 }}
-            accessibilityLabel="Loading feed"
           />
         ) : (
           feed.map((item, index) => (
@@ -186,9 +128,7 @@ export const Dashboard = ({ navigation }: Props) => {
               key={item.id}
               testID={`incident-feed-item-${index}`}
               style={styles.feedItem}
-              onPress={() =>
-                navigation.navigate("IncidentDetail", { incident: item })
-              }
+              onPress={() => setSelectedIncident(item)}
               accessibilityRole="button"
               accessibilityLabel={`${item.status} incident: ${item.description} at ${item.location}`}
             >
@@ -243,6 +183,14 @@ export const Dashboard = ({ navigation }: Props) => {
           <Text style={styles.emptyText}>No recent site activity.</Text>
         )}
       </View>
+
+      <AuditDetailModal
+        visible={!!selectedIncident}
+        item={selectedIncident}
+        onClose={() => setSelectedIncident(null)}
+        viewMode="Incidents"
+        navigation={navigation}
+      />
     </ScrollView>
   );
 };
@@ -250,118 +198,24 @@ export const Dashboard = ({ navigation }: Props) => {
 const styles = StyleSheet.create({
   content: { padding: SPACING.m },
   hero: { marginBottom: SPACING.l, paddingLeft: 5 },
-  greeting: {
-    ...TYPOGRAPHY.caption,
-    fontWeight: "800",
-    color: COLORS.secondary,
-    letterSpacing: 1.5,
-  },
-  name: {
-    ...TYPOGRAPHY.header,
-    fontSize: 28,
-    color: COLORS.primary,
-    marginTop: 4,
-  },
-  summaryBanner: {
-    backgroundColor: COLORS.secondary,
-    flexDirection: "row",
-    alignItems: "center",
-    minHeight: TOUCH_TARGETS.min,
-    padding: SPACING.s,
-    borderRadius: 12,
-    marginBottom: SPACING.l,
-    gap: 10,
-    ...SHADOWS.light,
-  },
-  summaryText: {
-    color: COLORS.white,
-    fontWeight: "900",
-    fontSize: 14,
-    letterSpacing: 0.5,
-  },
+  greeting: { ...TYPOGRAPHY.caption, fontWeight: "800", color: COLORS.secondary, letterSpacing: 1.5 },
+  name: { ...TYPOGRAPHY.header, fontSize: 28, color: COLORS.primary, marginTop: 4 },
+  summaryBanner: { backgroundColor: COLORS.secondary, flexDirection: "row", alignItems: "center", minHeight: TOUCH_TARGETS.min, padding: SPACING.s, borderRadius: 12, marginBottom: SPACING.l, gap: 10, ...SHADOWS.light },
+  summaryText: { color: COLORS.white, fontWeight: "900", fontSize: 14, letterSpacing: 0.5 },
   grid: { gap: 12, marginBottom: SPACING.xl },
-  card: {
-    backgroundColor: COLORS.white,
-    borderRadius: 16,
-    minHeight: TOUCH_TARGETS.min * 1.5,
-    padding: SPACING.m,
-    flexDirection: "row",
-    alignItems: "center",
-    ...SHADOWS.light,
-    borderWidth: 1.5,
-    borderColor: COLORS.lightGray,
-  },
-  iconBox: {
-    width: 48,
-    height: 48,
-    backgroundColor: COLORS.background,
-    borderRadius: 12,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: SPACING.m,
-  },
-  cardText: {
-    flex: 1,
-    ...TYPOGRAPHY.body,
-    fontWeight: "800",
-    color: COLORS.primary,
-  },
+  card: { backgroundColor: COLORS.white, borderRadius: 16, minHeight: TOUCH_TARGETS.min * 1.5, padding: SPACING.m, flexDirection: "row", alignItems: "center", ...SHADOWS.light, borderWidth: 1.5, borderColor: COLORS.lightGray },
+  iconBox: { width: 48, height: 48, backgroundColor: COLORS.background, borderRadius: 12, justifyContent: "center", alignItems: "center", marginRight: SPACING.m },
+  cardText: { flex: 1, ...TYPOGRAPHY.body, fontWeight: "800", color: COLORS.primary },
   feedSection: { marginTop: 10 },
-  feedHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: SPACING.m,
-    gap: 8,
-    paddingLeft: 5,
-  },
-  feedTitle: {
-    ...TYPOGRAPHY.caption,
-    fontWeight: "900",
-    color: COLORS.primary,
-    letterSpacing: 1,
-  },
-  pulseDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: COLORS.secondary,
-  },
-  feedItem: {
-    backgroundColor: COLORS.white,
-    padding: SPACING.m,
-    borderRadius: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    minHeight: TOUCH_TARGETS.min * 1.6,
-    marginBottom: 10,
-    ...SHADOWS.light,
-    borderWidth: 1.5,
-    borderColor: COLORS.lightGray,
-  },
+  feedHeader: { flexDirection: "row", alignItems: "center", marginBottom: SPACING.m, gap: 8, paddingLeft: 5 },
+  feedTitle: { ...TYPOGRAPHY.caption, fontWeight: "900", color: COLORS.primary, letterSpacing: 1 },
+  pulseDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: COLORS.secondary },
+  feedItem: { backgroundColor: COLORS.white, padding: SPACING.m, borderRadius: 12, flexDirection: "row", alignItems: "center", minHeight: TOUCH_TARGETS.min * 1.6, marginBottom: 10, ...SHADOWS.light, borderWidth: 1.5, borderColor: COLORS.lightGray },
   statusLine: { width: 6, height: 45, borderRadius: 3, marginRight: 12 },
   feedContent: { flex: 1 },
-  feedTopRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  feedDesc: {
-    ...TYPOGRAPHY.body,
-    fontWeight: "800",
-    color: COLORS.primary,
-    flex: 0.75,
-  },
-  feedMeta: {
-    ...TYPOGRAPHY.body,
-    fontSize: 13,
-    color: COLORS.textLight,
-    marginTop: 4,
-  },
+  feedTopRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  feedDesc: { ...TYPOGRAPHY.body, fontWeight: "800", color: COLORS.primary, flex: 0.75 },
+  feedMeta: { ...TYPOGRAPHY.body, fontSize: 13, color: COLORS.textLight, marginTop: 4 },
   statusTag: { ...TYPOGRAPHY.caption, fontWeight: "900", letterSpacing: 0.5 },
-  emptyText: {
-    textAlign: "center",
-    ...TYPOGRAPHY.body,
-    color: COLORS.textLight,
-    marginTop: 20,
-  },
+  emptyText: { textAlign: "center", ...TYPOGRAPHY.body, color: COLORS.textLight, marginTop: 20 },
 });

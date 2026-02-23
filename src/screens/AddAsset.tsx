@@ -1,77 +1,26 @@
-import React, { useState } from "react";
+import React from "react";
 import {
   View,
   Text,
   StyleSheet,
   TextInput,
   TouchableOpacity,
-  Alert,
   ScrollView,
   SafeAreaView,
   ActivityIndicator,
 } from "react-native";
-import { assetService, Asset } from "../services/assetService";
+import { useAsset } from "../hooks/useAsset";
 import { COLORS, SPACING, TYPOGRAPHY, TOUCH_TARGETS } from "../theme";
 
 export const AddAsset = ({ route, navigation }: any) => {
-  const editingAsset = route.params?.asset;
-  const isEditing = !!editingAsset;
-
-  const [name, setName] = useState(editingAsset?.asset_name || "");
-  const [type, setType] = useState(editingAsset?.type || "");
-  const [regulation, setRegulation] = useState(editingAsset?.regulation || "");
-  const [location, setLocation] = useState(editingAsset?.location || "");
-  const [loading, setLoading] = useState(false);
-
-  const handleSave = async () => {
-    if (!name || !type || !regulation) {
-      Alert.alert("Error", "Required fields missing.");
-      return;
-    }
-
-    try {
-      setLoading(true);
-      const assetData: Asset = {
-        asset_name: name,
-        type: type.toUpperCase(),
-        regulation: regulation,
-        location: location,
-      };
-
-      if (isEditing) {
-        await assetService.updateAsset(editingAsset.id, assetData);
-      } else {
-        await assetService.createAsset(assetData);
-      }
-
-      navigation.goBack();
-    } catch (e: any) {
-      Alert.alert("Error", e.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDelete = async () => {
-    Alert.alert("Confirm Delete", "Remove this asset permanently?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            setLoading(true);
-            await assetService.deleteAsset(editingAsset.id);
-            navigation.goBack();
-          } catch (e: any) {
-            Alert.alert("Error", e.message);
-          } finally {
-            setLoading(false);
-          }
-        },
-      },
-    ]);
-  };
+  const {
+    form,
+    setters,
+    loading,
+    isEditing,
+    handleSave,
+    handleDelete,
+  } = useAsset(route.params?.asset, navigation);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -84,8 +33,8 @@ export const AddAsset = ({ route, navigation }: any) => {
         <TextInput
           testID="input-asset-name"
           style={styles.input}
-          value={name}
-          onChangeText={setName}
+          value={form.name}
+          onChangeText={setters.setName}
           placeholder="Name"
           placeholderTextColor={COLORS.textLight}
           accessibilityLabel="Asset Name"
@@ -96,8 +45,8 @@ export const AddAsset = ({ route, navigation }: any) => {
         <TextInput
           testID="input-asset-category"
           style={styles.input}
-          value={type}
-          onChangeText={setType}
+          value={form.type}
+          onChangeText={setters.setType}
           placeholder="Type"
           placeholderTextColor={COLORS.textLight}
           accessibilityLabel="Category"
@@ -108,8 +57,8 @@ export const AddAsset = ({ route, navigation }: any) => {
         <TextInput
           testID="input-asset-regulation"
           style={styles.input}
-          value={regulation}
-          onChangeText={setRegulation}
+          value={form.regulation}
+          onChangeText={setters.setRegulation}
           placeholder="Regulation"
           placeholderTextColor={COLORS.textLight}
           accessibilityLabel="Regulation"
@@ -120,8 +69,8 @@ export const AddAsset = ({ route, navigation }: any) => {
         <TextInput
           testID="input-asset-location"
           style={styles.input}
-          value={location}
-          onChangeText={setLocation}
+          value={form.location}
+          onChangeText={setters.setLocation}
           placeholder="Location"
           placeholderTextColor={COLORS.textLight}
           accessibilityLabel="Location"

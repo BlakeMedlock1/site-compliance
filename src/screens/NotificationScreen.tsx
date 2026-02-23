@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import {
   View,
   Text,
@@ -7,48 +7,13 @@ import {
   TouchableOpacity,
   ActivityIndicator,
 } from "react-native";
-import { supabase } from "../lib/supabase";
-import { notificationService } from "../services/notificationService";
 import { useAuth } from "../context/AuthContext";
+import { useNotifications } from "../hooks/useNotifications";
 import { COLORS, SPACING, TYPOGRAPHY, SHADOWS, TOUCH_TARGETS } from "../theme";
 
 export const NotificationsScreen = () => {
   const { user } = useAuth();
-  const [notifications, setNotifications] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const fetchNotifications = async () => {
-    if (!user) return;
-    const data = await notificationService.getNotificationLog(user.id);
-    setNotifications(data || []);
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    fetchNotifications();
-
-    const channel = supabase
-      .channel("notif_screen_sync")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "site_notifications" },
-        () => fetchNotifications(),
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
-
-  const handlePress = async (item: any) => {
-    if (!item.is_read) {
-      await notificationService.markAsRead(item.id);
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === item.id ? { ...n, is_read: true } : n)),
-      );
-    }
-  };
+  const { notifications, loading, handlePress } = useNotifications(user);
 
   const renderItem = ({ item }: { item: any }) => (
     <TouchableOpacity

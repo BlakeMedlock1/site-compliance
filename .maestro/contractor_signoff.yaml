@@ -21,6 +21,9 @@ appId: com.blakemedlock.ComplianceApp
 - tapOn: { id: "input-digital-signature" }
 - inputText: "B. Medlock"
 
+- tapOn:
+    point: "50%, 10%"
+
 - tapOn: { id: "switch-next-service" }
 
 - tapOn: "OK"

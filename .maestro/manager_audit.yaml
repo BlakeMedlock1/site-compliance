@@ -21,7 +21,7 @@ appId: com.blakemedlock.ComplianceApp
 - tapOn: { id: "audit-tab-Accidents" }
 
 - tapOn: { id: "audit-log-item-0" }
-- assertVisible: "LATEST DIGITAL EVIDENCE"
+- assertVisible: "STATUTORY EVIDENCE CHAIN"
 
 - tapOn: { id: "btn-close-audit-modal" }
 - tapOn: { id: "btn-export-audit-pdf" }

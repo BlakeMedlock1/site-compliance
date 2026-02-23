@@ -1,35 +1,21 @@
-import React, { useState } from "react";
+import React from "react";
 import {
   View,
   Text,
   TextInput,
   StyleSheet,
-  Alert,
-  ScrollView,
+  SafeAreaView,
   TouchableOpacity,
   ActivityIndicator,
-  SafeAreaView,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
 } from "react-native";
-import { useAuth } from "../context/AuthContext";
+import { useLoginForm } from "../hooks/useLoginForm";
 import { COLORS, TYPOGRAPHY, SHADOWS, SPACING, TOUCH_TARGETS } from "../theme";
 
 export const LoginScreen = () => {
-  const { login, loading } = useAuth();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-
-  const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert(
-        "Authentication Failed",
-        "Please enter valid credentials to proceed.",
-      );
-      return;
-    }
-    await login(email, password);
-  };
+  const { email, setEmail, password, setPassword, loading, handleLogin } = useLoginForm();
 
   return (
     <SafeAreaView style={styles.container}>
@@ -39,9 +25,7 @@ export const LoginScreen = () => {
       >
         <ScrollView contentContainerStyle={styles.center}>
           <View style={styles.loginCard}>
-            <Text style={styles.brand} accessibilityRole="header">
-              Raytheon
-            </Text>
+            <Text style={styles.brand} accessibilityRole="header">Raytheon</Text>
             <Text style={styles.title}>Compliance System</Text>
             <Text style={styles.subtitle}>Secure Site Access Portal</Text>
 
@@ -50,14 +34,11 @@ export const LoginScreen = () => {
               testID="login-email-input"
               style={styles.input}
               placeholder="e.g. operative@site.com"
-              placeholderTextColor={COLORS.textLight}
               value={email}
               onChangeText={setEmail}
               autoCapitalize="none"
               keyboardType="email-address"
-              autoComplete="email"
               accessibilityLabel="Email input field"
-              accessibilityHint="Enter your registered work email address"
             />
 
             <Text style={styles.label}>PASSWORD</Text>
@@ -65,13 +46,10 @@ export const LoginScreen = () => {
               testID="login-password-input"
               style={styles.input}
               placeholder="Enter your password"
-              placeholderTextColor={COLORS.textLight}
               value={password}
               onChangeText={setPassword}
               secureTextEntry
-              autoComplete="password"
               accessibilityLabel="Password input field"
-              accessibilityHint="Enter your secure password"
             />
 
             <TouchableOpacity
@@ -80,8 +58,6 @@ export const LoginScreen = () => {
               onPress={handleLogin}
               disabled={loading}
               accessibilityRole="button"
-              accessibilityLabel="Sign in to live vault"
-              accessibilityHint="Authenticates your credentials and opens the dashboard"
             >
               {loading ? (
                 <ActivityIndicator color={COLORS.white} size="large" />

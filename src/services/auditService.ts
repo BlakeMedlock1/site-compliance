@@ -5,8 +5,6 @@ import { supabase } from "../lib/supabase";
 import { COLORS } from "../theme";
 import { InputValidator } from "../utils/InputValidator";
 
-export type TradeKey = "Elec" | "Plumb" | "Fire" | "Gas" | "Other";
-
 export const auditService = {
   async getAuditData() {
     const { data: incidents, error: incError } = await supabase
@@ -36,20 +34,7 @@ export const auditService = {
   },
 
   getMonthlyTrend(data: any[]) {
-    const months = [
-      "Jan",
-      "Feb",
-      "Mar",
-      "Apr",
-      "May",
-      "Jun",
-      "Jul",
-      "Aug",
-      "Sep",
-      "Oct",
-      "Nov",
-      "Dec",
-    ];
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     const counts: Record<string, number> = {};
 
     data.forEach((item) => {
@@ -68,12 +53,8 @@ export const auditService = {
 
   async generateAuditPDF(title: string, data: any[], isAsset: boolean) {
     const cleanTitle = InputValidator.sanitize(title);
-
     if (!data || data.length === 0) {
-      Alert.alert(
-        "Export Error",
-        "No data available to export. Please check your internet or RLS settings.",
-      );
+      Alert.alert("Export Error", "No data available to export.");
       return;
     }
 
@@ -95,22 +76,11 @@ export const auditService = {
             <th style="padding: 10px;">Location/Specialist</th>
             <th style="padding: 10px;">Status</th>
           </tr>
-          ${data
-            .map((item) => {
-              const subject =
-                item.injured_person_name ||
-                item.asset_name ||
-                item.description ||
-                "General Log";
-
-              const primaryDate =
-                item.date_time || item.last_service || item.created_at;
-
-              const thirdCol = isAsset
-                ? formatDate(item.next_service_due)
-                : item.location || item.profiles?.name || "Site";
-
-              return `
+          ${data.map((item) => {
+            const subject = item.injured_person_name || item.asset_name || item.description || "General Log";
+            const primaryDate = item.date_time || item.last_service || item.created_at;
+            const thirdCol = isAsset ? formatDate(item.next_service_due) : item.location || item.profiles?.name || "Site";
+            return `
               <tr>
                 <td style="padding: 8px;">${InputValidator.sanitize(String(subject))}</td>
                 <td style="padding: 8px;">${formatDate(primaryDate)}</td>
@@ -118,19 +88,14 @@ export const auditService = {
                 <td style="padding: 8px;">${InputValidator.sanitize(item.status || "Reported")}</td>
               </tr>
             `;
-            })
-            .join("")}
+          }).join("")}
         </table>
       </body>
-    </html>
-  `;
+    </html>`;
 
     try {
       const { uri } = await Print.printToFileAsync({ html });
-      await Sharing.shareAsync(uri, {
-        UTI: ".pdf",
-        mimeType: "application/pdf",
-      });
+      await Sharing.shareAsync(uri, { UTI: ".pdf", mimeType: "application/pdf" });
     } catch (e) {
       Alert.alert("Export Error", "Failed to generate PDF.");
     }
